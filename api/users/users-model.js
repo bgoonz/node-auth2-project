@@ -1,7 +1,7 @@
 const db = require('../../data/db-config.js');
 
 function find() {
-  return db("users as u")
+  return db(`users as u`)
     .join("roles as r", "u.role", "=", "r.id")
     .select("u.user_id", "u.username", "r.role_name as role_name");
 
