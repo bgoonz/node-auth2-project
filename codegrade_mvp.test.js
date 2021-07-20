@@ -15,7 +15,7 @@ afterAll(async () => {
   await db.destroy()
 })
 
-it('[0] sanity check', () => {
+it('sanity check', () => {
   expect(true).not.toBe(false)
 })
 
