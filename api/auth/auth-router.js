@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const router = require("express").Router();
-const User = require("../users/users-model")
-const { checkPayload, checkUserExists } = require('./auth-middleware');
+const User = require("../users/users-model");
+const { checkPayload, checkUserExists } = require("./auth-middleware");
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 
 /**
@@ -31,14 +31,17 @@ const { JWT_SECRET } = require("../secrets"); // use this secret!
 // })
 router.post("/register", async (req, res, next) => {
   try {
-    const hash = bcrypt.hashSync(req.body.password, 10)
-    const newUser = await User.add({ username: req.body.username, password: hash, role_name: req.body.role_name })
-    res.status(201).json(newUser)
+    const hash = bcrypt.hashSync(req.body.password, 10);
+    const newUser = await User.add({
+      username: req.body.username,
+      password: hash,
+      role_name: req.body.role_name,
+    });
+    res.status(201).json(newUser);
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
 });
-
 
 /**
   [POST] /api/auth/login { "username": "sue", "password": "1234" }
@@ -62,31 +65,33 @@ router.post("/register", async (req, res, next) => {
 
 router.post("/login", checkPayload, checkUserExists, (req, res, next) => {
   try {
-    const verified = bcrypt.compareSync(req.body.password, req.userData.password)
-    if(verified){
-      req.session.user = req.userData
-      res.json(`Welcome back ${req.userData.username}`)
+    const verified = bcrypt.compareSync(
+      req.body.password,
+      req.userData.password
+    );
+    if (verified) {
+      req.session.user = req.userData;
+      res.json(`Welcome back ${req.userData.username}`);
     } else {
-      res.status(401).json("username or password are incorrect")
+      res.status(401).json("username or password are incorrect");
     }
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
 });
 
-
 router.get("/logout", (req, res) => {
-  if(req.session){
-    req.session.destroy(e => {
-      if(e){
-        res.json('Cant log out' + e.message)
+  if (req.session) {
+    req.session.destroy((e) => {
+      if (e) {
+        res.json("Cant log out" + e.message);
       } else {
-        res.json("logged out successfully!")
+        res.json("logged out successfully!");
       }
-    })
-  }else {
-    res.json("session does not exist")
+    });
+  } else {
+    res.json("session does not exist");
   }
-})
+});
 
 module.exports = router;
