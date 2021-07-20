@@ -1,12 +1,9 @@
 const router = require("express").Router();
-const { checkUsernameExists, validateRoleName } = require('./auth-middleware');
+const { checkUsernameExists, validateRoleName } = require("./auth-middleware");
 const { JWT_SECRET } = require("../secrets"); // use this secret!
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-
-const Users = require("../users/users-model.js");
-const { default: jwtDecode } = require("jwt-decode");
-
+const Users = require("../users/users-model");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 router.post("/register", validateRoleName, (req, res, next) => {
   /**
     [POST] /api/auth/register { "username": "anna", "password": "1234", "role_name": "angel" }
@@ -19,25 +16,15 @@ router.post("/register", validateRoleName, (req, res, next) => {
       "role_name": "angel"
     }
    */
-  let user = req.body;
-  // Make sure role_name is defined by taking from middleware req object
-  user.role_name = req.role_name; 
-  // bcrypt the password before saving
-  const rounds = process.env.BCRYTPT_ROUNDS || 12;
-  const hash = bcrypt.hashSync(user.password, rounds);
-
-  // save the hashed password into the database
-  user.password = hash;
-
-  // save the user
-  Users.add(user)
-    .then(saved => {
-      res.status(201).json({ message:  `Great to have you,  ${saved.username}` });
+  const { username, password } = req.body;
+  const role_name = req.role_name;
+  const hash = bcrypt.hashSync(password, 10);
+  Users.add({ username, password: hash, role_name })
+    .then((result) => {
+      res.status(201).json(result);
     })
-    .catch(next); // the custom err handling middleware will catch this
-
+    .catch(next);
 });
-
 
 router.post("/login", checkUsernameExists, (req, res, next) => {
   /**
@@ -59,36 +46,26 @@ router.post("/login", checkUsernameExists, (req, res, next) => {
       "role_name": "admin" // the role of the authenticated user
     }
    */
-  console.log("In the router.post")
-  let { username, password } = req.body;
-
-  Users.findBy({ username })
-    .then(([user]) => {
-      console.log("user:", user);
-      if (user && bcrypt.compareSync(password, user.password)) {
-        // create a token
-        const token = makeToken(user);
-        console.log(jwtDecode(token));
-        res.status(200).json({ message: `${user.username} is back`, token });
-      } else {
-        res.status(401).json({ message: "Invalid credentials" });
-      }
-    })
-    .catch(next);
+  if (bcrypt.compareSync(req.body.password, req.user.password)) {
+    const token = makeToken(req.user);
+    res.json({
+      message: `${req.user.username} is back!`,
+      token: token,
+    });
+  } else {
+    next({ status: 401, message: "Invalid credentials" });
+  }
 });
 
-
-function makeToken(user){
+const makeToken = (user) => {
   const payload = {
-    subject:user.user_id,
-    username:user.username,
-    role_name:user.role_name,
-  }
+    subject: user.user_id,
+    role_name: user.role_name,
+    username: user.username,
+  };
   const options = {
-    expiresIn: "500s"
-  }
-  console.log("make token:", jwt.sign(payload,JWT_SECRET,options))
-  return jwt.sign(payload,JWT_SECRET,options)
-}
-
+    expiresIn: "1d",
+  };
+  return jwt.sign(payload, JWT_SECRET, options);
+};
 module.exports = router;
